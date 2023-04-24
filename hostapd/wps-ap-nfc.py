@@ -61,46 +61,40 @@ def wpas_connect():
 
 def wpas_tag_read(message):
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return False
-    if "FAIL" in wpas.request("WPS_NFC_TAG_READ " + str(message).encode("hex")):
-        return False
-    return True
+    return "FAIL" not in wpas.request(
+        "WPS_NFC_TAG_READ " + str(message).encode("hex")
+    )
 
 
 def wpas_get_config_token():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("WPS_NFC_CONFIG_TOKEN NDEF")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_get_password_token():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("WPS_NFC_TOKEN NDEF")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_get_handover_sel():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("NFC_GET_HANDOVER_SEL NDEF WPS-CR")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_report_handover(req, sel):
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     return wpas.request("NFC_REPORT_HANDOVER RESP WPS " +
                         str(req).encode("hex") + " " +
@@ -116,18 +110,18 @@ class HandoverServer(nfc.handover.HandoverServer):
     # override to avoid parser error in request/response.pretty() in nfcpy
     # due to new WSC handover format
     def _process_request(self, request):
-        summary("received handover request {}".format(request.type))
+        summary(f"received handover request {request.type}")
         response = nfc.ndef.Message("\xd1\x02\x01Hs\x12")
-        if not request.type == 'urn:nfc:wkt:Hr':
+        if request.type != 'urn:nfc:wkt:Hr':
             summary("not a handover request")
         else:
             try:
                 request = nfc.ndef.HandoverRequestMessage(request)
             except nfc.ndef.DecodeError as e:
-                summary("error decoding 'Hr' message: {}".format(e))
+                summary(f"error decoding 'Hr' message: {e}")
             else:
                 response = self.process_request(request)
-        summary("send handover response {}".format(response.type))
+        summary(f"send handover response {response.type}")
         return response
 
     def process_request(self, request):

